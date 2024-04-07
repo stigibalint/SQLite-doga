@@ -58,7 +58,6 @@ namespace SQLite
                             insertCmd.Parameters.AddWithValue("@nem", values[1]);
                             insertCmd.Parameters.AddWithValue("@pontszam", int.Parse(values[2]));
                             insertCmd.Parameters.AddWithValue("@szak", values[3]);
-
                             insertCmd.ExecuteNonQuery();
                         }
 
@@ -125,7 +124,7 @@ namespace SQLite
 
                     else
                         lanyokSzama++;
-                    
+
                 }
             }
 
@@ -147,29 +146,51 @@ namespace SQLite
             }
         }
 
-        private void btnBetoltes_Click(object sender, RoutedEventArgs e)
+        private void btnBetoltes_Click(object sender, RoutedEventArgs e)  //most vettem észre, hogy kell szűrni is :(
         {
+            string szak = txtSzakReszlet.Text;
 
             List<Felvetelizo> felvetelizok = new List<Felvetelizo>();
 
-            string text = "SELECT * FROM Felvi";
-            connection = new SqliteConnection("FileName=adatbazis.db");
-            connection.Open();
-            SqliteCommand command = new(text, connection);
-
-            SqliteDataReader reader = command.ExecuteReader();
-            while (reader.Read())
+            try
             {
-                string nev = reader.GetString(0);
-                bool nem = reader.GetString(1) == "f";
-                int pontszam = reader.GetInt32(2);
-                string szak = reader.GetString(3);
-                Felvetelizo felvetelizo = new(nev, nem, pontszam, szak);
-                felvetelizok.Add(felvetelizo);
+                using (var connection = new SqliteConnection($"FileName=adatbazis.db"))
+                {
+                    connection.Open();
+
+                    var command = connection.CreateCommand();
+
+                    if (string.IsNullOrWhiteSpace(szak)) 
+                    {
+                        command.CommandText = "SELECT * FROM Felvi";
+                    }
+                    else 
+                    {
+                        command.CommandText = "SELECT * FROM Felvi WHERE Szak = @szak";
+                        command.Parameters.AddWithValue("@szak", szak);
+                    }
+
+                    var reader = command.ExecuteReader();
+                    while (reader.Read())
+                    {
+                        string nev = reader.GetString(0);
+                        bool nem = reader.GetString(1) == "f";
+                        int pontszam = reader.GetInt32(2);
+                        string szakRead = reader.GetString(3);
+                        Felvetelizo felvetelizo = new Felvetelizo(nev, nem, pontszam, szakRead);
+                        felvetelizok.Add(felvetelizo);
+                    }
+                    reader.Close();
+                }
+
+                gridRacs.ItemsSource = felvetelizok;
             }
-            reader.Close();
-            connection.Close();
-            gridRacs.ItemsSource = felvetelizok;
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Hiba történt: {ex.Message}");
+            }
         }
+
+
     }
 }
